@@ -1,0 +1,23 @@
+# name: test/sql/market_basket.test
+# description: test market_basket extension
+# group: [sql]
+
+# Before we load the extension, this will fail
+statement error
+SELECT market_basket('Sam');
+----
+Catalog Error: Scalar Function with name market_basket does not exist!
+
+# Require statement will ensure this test is run with this extension loaded
+require market_basket
+
+# Confirm the extension works
+query I
+SELECT market_basket('Sam');
+----
+...........🦆 Sam
+
+query I
+SELECT market_basket_openssl_version('Michael') ILIKE 'MarketBasket Michael, my linked OpenSSL version is OpenSSL%';
+----
+true

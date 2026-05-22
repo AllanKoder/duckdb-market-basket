@@ -1,0 +1,7 @@
+CompileFlags:
+  CompilationDatabase: build/debug
+  Add: 
+    - "-I${workspaceFolder}/duckdb/src/include"
+    - "-I${workspaceFolder}/duckdb/src/include/duckdb"
+    - "-I${workspaceFolder}/src/include"
+    - "-std=c++17"
