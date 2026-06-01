@@ -4,7 +4,6 @@
 #include "duckdb.hpp"
 #include "duckdb/common/exception.hpp"
 #include "duckdb/function/scalar_function.hpp"
-#include "duckdb/function/table_function.hpp"
 #include <duckdb/parser/parsed_data/create_scalar_function_info.hpp>
 
 // OpenSSL linked through vcpkg
@@ -20,98 +19,74 @@ inline void MarketBasketScalarFun(DataChunk &args, ExpressionState &state, Vecto
 }
 
 // ============================================================================
-// 1. BIND DATA - Stores information from binding phase
+// C++ API TABLE FUNCTION - simple_table()
 // ============================================================================
+
+// Bind data structure
 struct SimpleTableBindData : public TableFunctionData {
-	explicit SimpleTableBindData(const vector<Value> &inputs) {
-		if (inputs.size() > 0 && !inputs[0].IsNull()) {
-			count = inputs[0].GetValue<int64_t>();
-		} else {
-			count = 10; // default
-		}
-	}
 	int64_t count;
 };
 
-// ============================================================================
-// 2. LOCAL STATE - Per-thread execution context
-// ============================================================================
+// Local state structure
 struct SimpleTableLocalState : public LocalTableFunctionState {
 	int64_t current_row = 0;
 };
 
-// ============================================================================
-// 3. BIND FUNCTION - Called once during query planning
-// ============================================================================
+// Bind function
 static unique_ptr<FunctionData> SimpleTableBind(ClientContext &context, TableFunctionBindInput &input,
-                                                vector<LogicalType> &return_types, vector<string> &names) {
-	// Define output schema (2 columns)
-	return_types.push_back(LogicalType::BIGINT);
-	names.push_back("id");
-
-	return_types.push_back(LogicalType::VARCHAR);
-	names.push_back("value");
-
-	// Store bind data
-	return make_uniq<SimpleTableBindData>(input.inputs);
+                                                 vector<LogicalType> &return_types, vector<string> &names) {
+	int64_t count = 10;
+	if (!input.inputs.empty()) {
+		count = input.inputs[0].GetValue<int64_t>();
+	}
+	auto result = make_uniq<SimpleTableBindData>();
+	result->count = count;
+	return_types = {LogicalType::BIGINT, LogicalType::VARCHAR};
+	names = {"id", "value"};
+	return std::move(result);
 }
 
-// ============================================================================
-// 4. LOCAL INIT FUNCTION - Initialize per-thread state
-// ============================================================================
-static unique_ptr<LocalTableFunctionState>
-SimpleTableLocalInit(ExecutionContext &context, TableFunctionInitInput &input, GlobalTableFunctionState *global_state) {
+// Local init function
+static unique_ptr<LocalTableFunctionState> SimpleTableLocalInit(ExecutionContext &context,
+                                                                 TableFunctionInitInput &input,
+                                                                 GlobalTableFunctionState *gstate) {
 	return make_uniq<SimpleTableLocalState>();
 }
 
-// ============================================================================
-// 5. EXECUTE FUNCTION - Generate output rows
-// ============================================================================
+// Execute function
 static void SimpleTableFunction(ClientContext &context, TableFunctionInput &data_p, DataChunk &output) {
-	// Get state objects
 	auto &bind_data = data_p.bind_data->Cast<SimpleTableBindData>();
 	auto &local_state = data_p.local_state->Cast<SimpleTableLocalState>();
 
-	// Generate rows until we reach the requested count
 	idx_t out_idx = 0;
 	while (out_idx < STANDARD_VECTOR_SIZE && local_state.current_row < bind_data.count) {
-		// Column 0: ID (int64)
-		FlatVector::GetData<int64_t>(output.data[0])[out_idx] = local_state.current_row;
+		// Column 0: ID (BIGINT)
+		auto id_data = FlatVector::GetData<int64_t>(output.data[0]);
+		id_data[out_idx] = local_state.current_row;
 
-		// Column 1: Value (string) - use AddString to create the string
+		// Column 1: Value (VARCHAR)
 		string value = "Row_" + to_string(local_state.current_row);
-		FlatVector::GetData<string_t>(output.data[1])[out_idx] = StringVector::AddString(output.data[1], value);
+		string_t str_val = StringVector::AddString(output.data[1], value);
+		auto str_data = FlatVector::GetData<string_t>(output.data[1]);
+		str_data[out_idx] = str_val;
 
 		local_state.current_row++;
 		out_idx++;
 	}
-
 	output.SetCardinality(out_idx);
 }
 
-// ============================================================================
-// 7. REGISTER - Add to extension
-// ============================================================================
-void RegisterSimpleTableFunction(ExtensionLoader &loader) {
-	TableFunction table_func("simple_table",        // function name
-	                         {LogicalType::BIGINT}, // parameter types
-	                         SimpleTableFunction,   // execute function
-	                         SimpleTableBind,       // bind function
-	                         nullptr,               // init_global (optional)
-	                         SimpleTableLocalInit); // init_local (optional)
+// Registration
+static void RegisterSimpleTableFunction(ExtensionLoader &loader) {
+	// Version with BIGINT parameter
+	TableFunction func("simple_table", {LogicalType::BIGINT}, SimpleTableFunction, SimpleTableBind,
+	                   nullptr, SimpleTableLocalInit);
+	loader.RegisterFunction(func);
 
-	// Register with parameter (simple_table(n))
-	loader.RegisterFunction(table_func);
-
-	// Register without parameters (simple_table()) - uses default count=10
-	TableFunction table_func_default("simple_table",        // function name
-	                                 {},                    // no parameters
-	                                 SimpleTableFunction,   // execute function
-	                                 SimpleTableBind,       // bind function
-	                                 nullptr,               // init_global (optional)
-	                                 SimpleTableLocalInit); // init_local (optional)
-
-	loader.RegisterFunction(table_func_default);
+	// Version without parameters (default to 10 rows)
+	TableFunction func_no_params("simple_table", {}, SimpleTableFunction, SimpleTableBind,
+	                              nullptr, SimpleTableLocalInit);
+	loader.RegisterFunction(func_no_params);
 }
 inline void MarketBasketOpenSSLVersionScalarFun(DataChunk &args, ExpressionState &state, Vector &result) {
 	auto &name_vector = args.data[0];
