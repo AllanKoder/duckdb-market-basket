@@ -10,9 +10,10 @@ include extension-ci-tools/makefiles/duckdb_extension.Makefile
 # Regenerate compile_commands.json for LSP after builds
 .PHONY: regenerate-compile-commands
 regenerate-compile-commands:
-	@if [ -d build ]; then \
+	@if [ -d build/release ]; then \
 		echo "Regenerating compile_commands.json for clangd..."; \
-		cmake -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON > /dev/null 2>&1 || true; \
+		cmake -B build/release -DCMAKE_EXPORT_COMPILE_COMMANDS=ON $(if $(filter ninja,$(GEN)),-G "Ninja",) > /dev/null 2>&1 || true; \
+		ln -sf build/release/compile_commands.json compile_commands.json; \
 	fi
 
 # Hook into main build targets
