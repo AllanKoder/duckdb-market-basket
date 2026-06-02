@@ -16,15 +16,24 @@ project(${TARGET_NAME})
 set(CMAKE_CXX_STANDARD "17" CACHE STRING "C++ standard to enforce")
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-include_directories(src/include)
-include_directories(src/simple-function)
+file(GLOB_RECURSE EXTENSION_SOURCES
+    "${CMAKE_CURRENT_SOURCE_DIR}/src/*.cpp"
+)
 
-set(EXTENSION_SOURCES src/market_basket_extension.cpp
- src/simple-function/simple_function.cpp)
+include_directories(src/include)
 
 build_static_extension(${TARGET_NAME} ${EXTENSION_SOURCES})
 build_loadable_extension(${TARGET_NAME} " " ${EXTENSION_SOURCES})
 
+target_include_directories(${EXTENSION_NAME}
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/
+)
+
+target_include_directories(${LOADABLE_EXTENSION_NAME}
+    PRIVATE
+        ${CMAKE_CURRENT_SOURCE_DIR}/src/
+)
 # Link OpenSSL in both the static library as the loadable extension
 target_link_libraries(${EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto)
 target_link_libraries(${LOADABLE_EXTENSION_NAME} OpenSSL::SSL OpenSSL::Crypto)

@@ -3,7 +3,7 @@
 #include "market_basket_extension.hpp"
 #include "duckdb/common/exception.hpp"
 #include "duckdb/function/scalar_function.hpp"
-#include "simple-function/simple_function.hpp"
+#include "simple_function.hpp"
 #include <duckdb/parser/parsed_data/create_scalar_function_info.hpp>
 
 // OpenSSL linked through vcpkg
