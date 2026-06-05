@@ -51,6 +51,19 @@ static void SimpleTableFunction(ClientContext &context, TableFunctionInput &data
 		local_state.current_row++;
 		out_idx++;
 	}
+	utility::FrequencyCount<string> counter(9999999999);
+
+	counter.AddElement("test");
+	counter.AddElement("test");
+	counter.AddElement("test");
+	counter.AddElement("test");
+
+	counter.AddElement("test1");
+
+	std::cout << "Query 'test': " << counter.Query("test") << "\n";
+	std::cout << "Query 'test1': " << counter.Query("test1") << "\n";
+	std::cout << "Query 'test2': " << counter.Query("test2") << "\n";
+	std::cout << "Query 'test3': " << counter.Query("test3") << "\n";
 
 	output.SetCardinality(out_idx);
 }

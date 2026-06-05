@@ -5,6 +5,9 @@
 #include "duckdb/function/scalar_function.hpp"
 #include "simple_function.hpp"
 #include <duckdb/parser/parsed_data/create_scalar_function_info.hpp>
+#define XXH_STATIC_LINKING_ONLY
+#define XXH_IMPLEMENTATION
+#include "xxhash.h"
 
 // OpenSSL linked through vcpkg
 #include <openssl/opensslv.h>
